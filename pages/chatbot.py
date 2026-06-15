@@ -7,7 +7,7 @@ st.title("💬 MiniStore Assistant")
 st.markdown("How can we help you today? Ask us about our products, delivery, order status, payments, or return policies.")
 st.markdown("---")
 
-# --- KNOWLEDGE BASE (Same items as homepage) ---
+# --- KNOWLEDGE BASE ---
 PRODUCTS_INFO = [
     {"name": "AeroSound Max Wireless Headphones", "price": "$199.99", "details": "Active noise cancelling with 40-hour battery life."},
     {"name": "Chronos Minimalist Smartwatch", "price": "$149.50", "details": "AMOLED screen with continuous heart rate monitoring."},
@@ -30,7 +30,7 @@ def get_rule_based_response(user_text):
         
     # Check for individual specific products
     for p in PRODUCTS_INFO:
-        if p['name'].lower().split()[0] in text: # check via first word abbreviation matching
+        if p['name'].lower().split()[0] in text:
             return f"The **{p['name']}** is currently available for **{p['price']}**. Description: {p['details']} It's fully backed by our 30-day structural warranty!"
 
     # 2. Delivery & Shipping Queries
@@ -53,9 +53,8 @@ def get_rule_based_response(user_text):
     if "payment" in text or "pay" in text or "card" in text or "paypal" in text:
         return "💳 **Accepted Payments:** MiniStore accepts all major credit networks (Visa, Mastercard, AMEX), Apple Pay, Google Pay, and PayPal securely."
 
-    # Default fallback fallback
+    # Default fallback
     return "🤖 I'm specialized in answering store inquiries! Try asking about our **products**, **delivery times**, **order status**, **payments**, or our **return policy**."
-
 
 # --- CHAT HISTORY RETRIEVAL ---
 if "messages" not in st.session_state:
@@ -63,22 +62,19 @@ if "messages" not in st.session_state:
         {"role": "assistant", "content": "Hi there! I'm your MiniStore Virtual Assistant. How can I guide you today?"}
     ]
 
-# Render existing thread elements using st.chat_message
+# Render existing thread elements
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
 # --- USER SUBMISSION ENGINE ---
 if user_prompt := st.chat_input("Ask MiniStore Support..."):
-    # Render user query inline
     with st.chat_message("user"):
         st.markdown(user_prompt)
     st.session_state.messages.append({"role": "user", "content": user_prompt})
     
-    # Calculate response based on keyword classification
     bot_reply = get_rule_based_response(user_prompt)
     
-    # Render response
     with st.chat_message("assistant"):
         st.markdown(bot_reply)
     st.session_state.messages.append({"role": "assistant", "content": bot_reply})

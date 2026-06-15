@@ -83,7 +83,7 @@ st.markdown("""
         transform: scale(1.05);
     }
 </style>
-""", unsafe_content_type=True)
+""", unsafe_allow_html=True)
 
 # --- FLOATING SUPPORT BUTTON INJECTION ---
 # Automatically routes natively to your chatbot sub-page /chatbot
@@ -91,7 +91,7 @@ st.markdown("""
 <a href="/chatbot" target="_self" class="floating-chat-btn">
     💬 Live Chat Support
 </a>
-""", unsafe_content_type=True)
+""", unsafe_allow_html=True)
 
 # --- SESSION STATE INITIALIZATION ---
 if 'cart' not in st.session_state:
@@ -172,7 +172,7 @@ for i in range(0, len(filtered_products), GRID_COLUMNS):
                 <div class="product-price">${product['price']:.2f}</div>
                 <div class="product-desc">{product['desc']}</div>
             </div>
-            """, unsafe_content_type=True)
+            """, unsafe_allow_html=True)
             
             if st.button(f"Add to Cart 🛒", key=f"btn_{product['id']}", use_container_width=True):
                 prod_id = product['id']
@@ -182,4 +182,4 @@ for i in range(0, len(filtered_products), GRID_COLUMNS):
                     st.session_state.cart[prod_id] = {"name": product["name"], "price": product["price"], "quantity": 1}
                 st.rerun()
 
-st.markdown("<br><hr><center style='color: #6c757d; font-size: 0.85rem;'>© 2026 MiniStore Inc. All rights reserved.</center>", unsafe_content_type=True)
+st.markdown("<br><hr><center style='color: #6c757d; font-size: 0.85rem;'>© 2026 MiniStore Inc. All rights reserved.</center>", unsafe_allow_html=True)
