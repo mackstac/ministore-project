@@ -1,80 +1,85 @@
 import streamlit as st
+from openai import OpenAI
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="Support Chatbot | MiniStore", page_icon="💬", layout="centered")
 
-st.title("💬 MiniStore Assistant")
-st.markdown("How can we help you today? Ask us about our products, delivery, order status, payments, or return policies.")
+st.title("💬 MiniStore AI Assistant")
+st.markdown("Our intelligent support assistant is online and ready to help you with product queries, store operations, shipping, and returns.")
 st.markdown("---")
 
-# --- KNOWLEDGE BASE ---
-PRODUCTS_INFO = [
-    {"name": "AeroSound Max Wireless Headphones", "price": "$199.99", "details": "Active noise cancelling with 40-hour battery life."},
-    {"name": "Chronos Minimalist Smartwatch", "price": "$149.50", "details": "AMOLED screen with continuous heart rate monitoring."},
-    {"name": "Apex Ergonomic Mechanical Keyboard", "price": "$125.00", "details": "Hot-swappable linear switches with customizable RGB layout."},
-    {"name": "HydroVibe 1L Insulated Flask", "price": "$34.99", "details": "Double-wall vacuum insulation keeping drinks cold for 24 hours."},
-    {"name": "Nomad Daily Canvas Backpack", "price": "$85.00", "details": "Water-resistant build with a secure 16-inch laptop partition."},
-    {"name": "Lumina Ambient Desk Lamp", "price": "$45.99", "details": "Touch-controlled LED lamp offering integrated Qi wireless charging capabilities."}
-]
+# --- INITIALIZE OPENAI CLIENT ---
+# Reads automatically from .streamlit/secrets.toml or deployment environment variables
+if "OPENAI_API_KEY" not in st.secrets:
+    st.error("Missing OpenAI API Key! Please configure OPENAI_API_KEY in your Streamlit secrets.", icon="🔑")
+    st.stop()
 
-# --- INTENT INTERPRETATION LOGIC ---
-def get_rule_based_response(user_text):
-    text = user_text.lower()
-    
-    # 1. Product Related Queries
-    if "product" in text or "item" in text or "stock" in text or "catalog" in text:
-        reply = "We offer premium selected products. Here is our live collection:\n\n"
-        for p in PRODUCTS_INFO:
-            reply += f"• **{p['name']}** ({p['price']}) - _{p['details']}_\n"
-        return reply
-        
-    # Check for individual specific products
-    for p in PRODUCTS_INFO:
-        if p['name'].lower().split()[0] in text:
-            return f"The **{p['name']}** is currently available for **{p['price']}**. Description: {p['details']} It's fully backed by our 30-day structural warranty!"
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-    # 2. Delivery & Shipping Queries
-    if "delivery" in text or "shipping" in text or "ship" in text or "arrive" in text:
-        return "📦 **Shipping Info:** Standard fulfillment takes 3-5 business days. Express shipping options take 1-2 business days. We provide free tracking coordinates as soon as packages ship out!"
+# --- SYSTEM PROMPT & BOUNDARY DESIGN ---
+# Injects context constraints and store parameters directly into the context window
+SYSTEM_PROMPT = """
+You are a helpful, professional, and friendly customer support representative for 'MiniStore', a premium online store specializing in tech and everyday lifestyle products.
 
-    # 3. Order Tracking Status
-    if "status" in text or "track" in text or "order" in text:
-        return "🔍 **Order Lookups:** You can check status updates by referencing your 8-digit order number from your receipt email. If you don't have it, drop your email here and an agent will follow up!"
+Here is the exact live product catalog of MiniStore:
+1. AeroSound Max Wireless Headphones - $199.99: Hybrid active noise cancelling with up to 40 hours of battery life and hi-res audio. (Category: Electronics)
+2. Chronos Minimalist Smartwatch - $149.50: Sleek AMOLED display featuring continuous heart rate monitoring and 7-day battery. (Category: Electronics)
+3. Apex Ergonomic Mechanical Keyboard - $125.00: Hot-swappable linear switches with customizable RGB backlighting and aluminum frame. (Category: Electronics)
+4. HydroVibe 1L Insulated Flask - $34.99: Double-wall vacuum insulation keeps drinks ice-cold for 24 hours or hot for 12. (Category: Lifestyle)
+5. Nomad Daily Canvas Backpack - $85.00: Water-resistant canvas with a dedicated 16-inch laptop compartment and anti-theft pockets. (Category: Lifestyle)
+6. Lumina Ambient Desk Lamp - $45.99: Touch-controlled LED lamp with adjustable color temperatures and integrated Qi wireless charger. (Category: Home Decor)
 
-    # 4. Refunds Policy
-    if "refund" in text or "money back" in text:
-        return "💰 **Refund Policy:** Once processed internally, credit adjustments reflect on your original billing statement within 5-7 business banking loops."
+Store Policies:
+- Shipping: Standard delivery takes 3-5 business days. Express shipping takes 1-2 business days. Free tracking coordinates are provided.
+- Returns & Refunds: We accept returns for unopened/unused items within 30 days of standard drop-off dates. Refund processing takes 5-7 business banking days to settle. Contact returns@ministore.com for labels.
+- Payments: We accept Visa, Mastercard, AMEX, Apple Pay, Google Pay, and PayPal.
+- Order Status: Customers can look up status updates using their 8-digit order number from their receipt email.
 
-    # 5. Returns Actions
-    if "return" in text or "exchange" in text:
-        return "🔄 **Hassle-Free Returns:** We accept unopened/unused merchandise returns within 30 days of standard drop-off dates. Contact returns@ministore.com to print your free return shipping label."
+STRICT BEHAVIOR RULES:
+- You may ONLY assist users with topics directly related to MiniStore (products, orders, checkout, delivery, refunds, returns, operations, or payments).
+- If the user asks general-knowledge questions, programming assistance, creative tasks, or anything unrelated to MiniStore, you must politely decline and redirect them back to store support topics. Keep your answers concise, clear, and helpful.
+"""
 
-    # 6. Payment Support
-    if "payment" in text or "pay" in text or "card" in text or "paypal" in text:
-        return "💳 **Accepted Payments:** MiniStore accepts all major credit networks (Visa, Mastercard, AMEX), Apple Pay, Google Pay, and PayPal securely."
-
-    # Default fallback
-    return "🤖 I'm specialized in answering store inquiries! Try asking about our **products**, **delivery times**, **order status**, **payments**, or our **return policy**."
-
-# --- CHAT HISTORY RETRIEVAL ---
-if "messages" not in st.session_state:
-    st.session_state.messages = [
-        {"role": "assistant", "content": "Hi there! I'm your MiniStore Virtual Assistant. How can I guide you today?"}
+# --- CHAT HISTORY INITIALIZATION ---
+if "openai_messages" not in st.session_state:
+    st.session_state.openai_messages = [
+        {"role": "assistant", "content": "Hello! I am your MiniStore Support Assistant. How can I assist you with your shopping experience today?"}
     ]
 
-# Render existing thread elements
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+# Render existing conversation thread to UI container view
+for msg in st.session_state.openai_messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
 
-# --- USER SUBMISSION ENGINE ---
-if user_prompt := st.chat_input("Ask MiniStore Support..."):
+# --- USER ENTRY AND API PIPELINE ---
+if user_prompt := st.chat_input("Ask about products, orders, returns..."):
+    # 1. Render and commit user input to context array
     with st.chat_message("user"):
         st.markdown(user_prompt)
-    st.session_state.messages.append({"role": "user", "content": user_prompt})
+    st.session_state.openai_messages.append({"role": "user", "content": user_prompt})
     
-    bot_reply = get_rule_based_response(user_prompt)
-    
+    # 2. Call chat completion endpoint
     with st.chat_message("assistant"):
-        st.markdown(bot_reply)
-    st.session_state.messages.append({"role": "assistant", "content": bot_reply})
+        message_placeholder = st.empty()
+        
+        try:
+            # Build payload incorporating system constraints along with the current session state
+            api_payload = [{"role": "system", "content": SYSTEM_PROMPT}] + [
+                {"role": m["role"], "content": m["content"]} for m in st.session_state.openai_messages
+            ]
+            
+            # Request response completion
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=api_payload,
+                temperature=0.3 # Low temperature ensures high predictability and stricter policy adherence
+            )
+            
+            bot_reply = response.choices[0].message.content
+            message_placeholder.markdown(bot_reply)
+            
+            # 3. Save assistant reply state
+            st.session_state.openai_messages.append({"role": "assistant", "content": bot_reply})
+            
+        except Exception as e:
+            st.error(f"An error occurred while connecting to the assistant: {str(e)}")
